@@ -50,9 +50,9 @@ bars:
       - audio_visualizer
       - komorebi_control
       - systray
-      - open_meteo
-      - wallpapers
-      - github
+      # - open_meteo
+      # - wallpapers
+      # - github
       - notifications
       - volume
       - clock

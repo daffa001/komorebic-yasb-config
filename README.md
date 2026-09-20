@@ -96,7 +96,7 @@ Dua file yang **sengaja tidak ikut** di-commit (lihat `.gitignore`):
 ## Instalasi cepat
 
 ```powershell
-git clone https://github.com/<user>/komorebic-yasb-config.git
+git clone https://github.com/daffa001/komorebic-yasb-config.git
 cd komorebic-yasb-config
 .\install.ps1
 ```
