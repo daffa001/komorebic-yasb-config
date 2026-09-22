@@ -48,6 +48,12 @@
       "kind": "Exe",
       "id": "claude.exe",
       "matching_strategy": "Equals"
+    },
+    {
+      "kind": "Exe",
+      "id": "Hermes.exe",
+      "matching_strategy": "Equals"
+
     }
   ],
   "tray_and_multi_window_applications": [
@@ -55,6 +61,12 @@
       "kind": "Exe",
       "id": "claude.exe",
       "matching_strategy": "Equals"
+    },
+    {
+      "kind": "Exe",
+      "id": "Hermes.exe",
+      "matching_strategy": "Equals"
+
     }
   ],
   "monitors": [
