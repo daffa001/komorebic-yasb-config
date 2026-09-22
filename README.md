@@ -231,6 +231,7 @@ Membatalkan:
 komorebic disable-autostart
 yasbc disable-autostart
 ```
+
 ### Varian elevated (wajib kalau ada app yang jalan as Administrator)
 
 Kalau kamu menjalankan Windows Terminal, VS Code, atau aplikasi lain **sebagai Administrator**, komorebi yang dijalankan lewat shortcut startup biasa (non-elevated) **tidak akan pernah mengelola window itu** — lihat [catatan](#aplikasi-yang-jalan-sebagai-administrator-tidak-ter-tile). Solusinya komorebi harus ikut elevated, dan satu-satunya cara autostart elevated tanpa prompt UAC tiap login adalah scheduled task dengan *Run with highest privileges*.
