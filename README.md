@@ -495,6 +495,23 @@ Get-Content "$env:USERPROFILE\.config\yasb\yasb.log" -Tail 60 | Select-String "K
 
 Kalau yang muncul hanya `Waiting for Komorebi to subscribe to named pipe`, berarti komorebi belum jalan. Start komorebi dulu, YASB akan menyambung sendiri.
 
+### YASB di-quit dari tray tapi tidak mau jalan lagi
+
+Cek log-nya:
+
+```powershell
+Get-Content "$env:USERPROFILE\.config\yasb\yasb.log" -Tail 5
+```
+
+Kalau isinya `Another instance of the YASB is already running`, proses lama belum benar-benar mati — *Exit* dari tray kadang cuma menghentikan listener-nya dan prosesnya menggantung. Bunuh paksa lalu jalankan lagi:
+
+```powershell
+Stop-Process -Name yasb -Force
+yasbc start
+```
+
+Kasus ini muncul setelah komorebi di-stop/start beberapa kali berturut-turut: widget workspace dan stack jadi kosong karena listener kehilangan named pipe dan tidak menyambung ulang. Sebelum sampai quit, coba dulu `yasbc reload`.
+
 ### komorebi gagal start tanpa pesan jelas
 
 Jalankan di foreground untuk melihat error aslinya:
