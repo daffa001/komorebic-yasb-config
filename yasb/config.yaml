@@ -43,10 +43,12 @@ bars:
       - quick_launch
       - komorebi_workspaces
       - komorebi_active_layout
-      - komorebi_stack
+      
       center:
       - taskbar
       right:
+      - komorebi_stack
+      - media
       - audio_visualizer
       - komorebi_control
       - systray
@@ -62,7 +64,7 @@ widgets:
     type: "yasb.wallpapers.WallpapersWidget"
     options:
       label: "<span>\ue7aa</span>"
-      image_path: "C:/Users/amn/Pictures" 
+      image_path: "C:/Users/daffa/Pictures" 
       engine:
         enabled: true
         animation: "split"
@@ -101,6 +103,61 @@ widgets:
         peek: true
       title_label:
         enabled: false
+  media:
+    type: "yasb.media.MediaWidget"
+    options:
+      label: "{title}{s}{artist}"
+      label_alt: "{title}"
+      separator: " - "
+      hide_empty: true
+      max_field_size:
+        label: 28
+        label_alt: 40
+        truncate_whole_label: false
+      show_thumbnail: true
+      controls_only: false
+      controls_left: false
+      controls_hide: true
+      thumbnail_alpha: 70
+      thumbnail_padding: 6
+      thumbnail_corner_radius: 12
+      symmetric_corner_radius: true
+      thumbnail_edge_fade: false
+      icons:
+        prev_track: ""
+        next_track: ""
+        play: ""
+        pause: ""
+      media_menu:
+        blur: true
+        round_corners: true
+        round_corners_type: "normal"
+        border_color: "System"
+        alignment: "right"
+        direction: "down"
+        offset_top: 6
+        offset_left: 0
+        thumbnail_corner_radius: 8
+        thumbnail_size: 120
+        max_title_size: 60
+        max_artist_size: 20
+        max_source_size: 16
+        show_source: true
+        show_volume_slider: true
+      scrolling_label:
+        enabled: true
+        update_interval_ms: 33
+        style: "left"
+        separator: " | "
+        label_padding: 0
+        always_scroll: false
+        ease_slope: 20
+        ease_pos: 0.8
+        ease_min: 0.5
+      callbacks:
+        on_left: "toggle_media_menu"
+        on_middle: "toggle_play_pause"
+        on_right: "toggle_label"
   audio_visualizer:
     type: "yasb.audio_visualizer.AudioVisualizerWidget"
     options:

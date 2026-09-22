@@ -35,6 +35,8 @@ Widget komorebi yang aktif di bar:
 | `komorebi_active_layout` | kiri | Ikon layout aktif. **Klik kiri** buka dropdown daftar layout, **klik tengah** toggle monocle, **klik kanan** next layout. |
 | `komorebi_stack` | kiri | Muncul hanya saat window sedang di-stack. Menampilkan ikon tiap window dalam stack, dibungkus border sebagai penanda. |
 | `komorebi_control` | kanan | Start / stop / reload komorebi langsung dari bar, plus info versi. |
+| `media` | kanan | Lagu yang sedang diputar (thumbnail + judul - artis, scroll kalau panjang), diambil dari Windows media session (Spotify, browser, VLC, ...). Hilang saat tidak ada yang diputar. **Klik kiri** popup kontrol (seek, prev/play/next, volume app), **klik tengah** play/pause, **klik kanan** judul saja. |
+| `audio_visualizer` | kanan | Bar visualizer dari output audio sistem, di sebelah widget media. Hilang otomatis saat idle. |
 
 ---
 
@@ -62,7 +64,7 @@ Versi yang dipakai saat config ini dibuat:
 | komorebi | 0.1.41 | `LGUG2Z.komorebi` |
 | whkd | 0.2.10 | `LGUG2Z.whkd` |
 | YASB Reborn | 2.0.7 (stable) | `AmN.yasb` |
-| Windows | 10 Pro 19045 | — |
+| Windows | 10 Pro 19045, 11 Pro 26200 | — |
 
 Setelah instalasi, buka terminal **baru** supaya `komorebic` dan `yasbc` masuk ke `PATH`.
 
@@ -85,6 +87,7 @@ Kalau dua font ini belum terpasang, ikon di bar akan jadi kotak kosong (*tofu*).
 | `komorebi/whkdrc` | `%USERPROFILE%\.config\whkdrc` |
 | `yasb/config.yaml` | `%USERPROFILE%\.config\yasb\config.yaml` |
 | `yasb/styles.css` | `%USERPROFILE%\.config\yasb\styles.css` |
+| `scripts/install-elevated-autostart.ps1` | — (dijalankan, tidak disalin) — mendaftarkan scheduled task autostart elevated, lihat [Autostart](#autostart) |
 
 Dua file yang **sengaja tidak ikut** di-commit (lihat `.gitignore`):
 
@@ -108,6 +111,7 @@ Opsi:
 ```powershell
 .\install.ps1 -SkipAutostart   # jangan bikin entri startup
 .\install.ps1 -SkipFetch       # jangan unduh ulang applications.json
+.\install.ps1 -Elevated        # autostart lewat scheduled task elevated (butuh PowerShell admin), lihat Autostart
 ```
 
 Kalau PowerShell menolak menjalankan script:
@@ -227,6 +231,39 @@ Membatalkan:
 komorebic disable-autostart
 yasbc disable-autostart
 ```
+### Varian elevated (wajib kalau ada app yang jalan as Administrator)
+
+Kalau kamu menjalankan Windows Terminal, VS Code, atau aplikasi lain **sebagai Administrator**, komorebi yang dijalankan lewat shortcut startup biasa (non-elevated) **tidak akan pernah mengelola window itu** — lihat [catatan](#aplikasi-yang-jalan-sebagai-administrator-tidak-ter-tile). Solusinya komorebi harus ikut elevated, dan satu-satunya cara autostart elevated tanpa prompt UAC tiap login adalah scheduled task dengan *Run with highest privileges*.
+
+```powershell
+# dari PowerShell yang dijalankan sebagai Administrator
+.\scripts\install-elevated-autostart.ps1
+# atau sekaligus saat instalasi:
+.\install.ps1 -Elevated
+```
+
+Script-nya:
+
+- mendaftarkan task **`komorebi Elevated Autostart`** — trigger *At log on* (+5 detik), *Run with highest privileges*, aksi `komorebic-no-console.exe start --config "%USERPROFILE%\komorebi.json" --whkd`;
+- menghapus `komorebi.lnk` di `shell:startup` supaya tidak ada instance kedua yang non-elevated;
+- menghapus task `FancyWM Elevated Autostart` kalau masih ada (sisa WM lama).
+
+whkd ikut elevated karena di-spawn oleh komorebic dari dalam task itu. YASB tetap non-elevated dan tidak perlu diubah — komunikasi ke komorebi lewat named pipe/socket tidak terpengaruh.
+
+Restart manual tanpa reboot:
+
+```powershell
+komorebic stop --whkd
+schtasks /run /tn "komorebi Elevated Autostart"
+```
+
+> Tombol **Start / Reload di widget `komorebi_control`** YASB selalu menghasilkan komorebi **non-elevated** (widget-nya berjalan sebagai user biasa), jadi pada setup elevated jangan pakai tombol itu untuk start ulang — pakai `schtasks /run` di atas. Tombol Stop tetap aman dipakai.
+
+Membatalkan:
+
+```powershell
+Unregister-ScheduledTask -TaskName 'komorebi Elevated Autostart' -Confirm:$false
+```
 
 ---
 
@@ -251,7 +288,7 @@ Semua diatur di `komorebi/whkdrc`. Prefix-nya `alt`.
 |---|---|
 | `alt + ← / ↓ / ↑ / →` | Stack window ke arah tersebut |
 | `alt + ;` | Keluarkan window dari stack |
-| `alt + [ / ]` | Pindah antar window di dalam stack |
+| `alt + `` ` `` / `]` | Pindah ke window sebelumnya / berikutnya di dalam stack |
 
 ### Layout dan ukuran
 
@@ -332,6 +369,23 @@ Harus ada `--config="..."` di situ. Kalau kosong, restart dengan flag yang benar
 
 Karena itu autostart lewat `komorebic enable-autostart --config ...` sangat disarankan — flag-nya tertanam permanen di shortcut, jadi tidak ada lagi kemungkinan lupa.
 
+### Aplikasi yang jalan sebagai Administrator tidak ter-tile
+
+Gejalanya persis seperti kasus `--config` di atas — Windows Terminal / VS Code dibiarkan floating tanpa error apa pun — tapi penyebabnya beda: **window elevated hanya bisa dikelola oleh komorebi yang juga elevated**. Windows (UIPI) melarang proses non-elevated membaca informasi proses yang elevated, jadi komorebi tidak bisa tahu exe-nya dan menganggap window itu tidak eligible. `komorebic visible-windows` bahkan tidak menampilkannya.
+
+Cara memastikan — kalau title window-nya diawali `Administrator:` atau diakhiri `[Administrator]`, itu window elevated. Cek komorebi-nya:
+
+```powershell
+# Terminal biasa (non-admin): kalau baris ini gagal "Access is denied", komorebi-nya elevated
+(Get-Process komorebi).MainModule.FileName
+```
+
+Solusi: autostart lewat scheduled task elevated, lihat [Autostart → Varian elevated](#varian-elevated-wajib-kalau-ada-app-yang-jalan-as-administrator). Setelah komorebi elevated, window elevated baru langsung ter-tile.
+
+### Window yang sudah ada sebelum komorebi start tidak otomatis di-manage
+
+komorebi mengelola window saat menerima event *ObjectShow*. Window yang sudah terbuka sebelum komorebi jalan (dan tidak ada di state dump sesi sebelumnya) dibiarkan floating sampai ada event itu. Cukup **minimize lalu restore** window-nya, atau tutup-buka ulang. Ini normal, bukan masalah config.
+
 ### `KOMOREBI_CONFIG_HOME` tidak menggantikan `--config`
 
 Env var itu hanya dipakai komorebic untuk *mencari* lokasi file config. `komorebic start` tetap menjalankan `komorebi.exe` tanpa argumen apapun meski variabel ini sudah diset.
@@ -402,6 +456,8 @@ Test-Path "$env:USERPROFILE\applications.json"
 komorebic fetch-app-specific-configuration
 komorebic reload-configuration
 ```
+
+Sudah ada `--config`, `applications.json` ada, tapi tetap floating — dan title-nya ada `Administrator`? Terminalnya elevated, komorebi-nya tidak. Lihat [catatan soal Administrator](#aplikasi-yang-jalan-sebagai-administrator-tidak-ter-tile).
 
 ### Ikon di bar jadi kotak kosong
 

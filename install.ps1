@@ -12,18 +12,27 @@
 .PARAMETER SkipFetch
     Jangan unduh applications.json (pakai yang sudah ada di %USERPROFILE%).
 
+.PARAMETER Elevated
+    Daftarkan autostart komorebi sebagai scheduled task "Run with highest
+    privileges" (lewat scripts\install-elevated-autostart.ps1), bukan shortcut
+    di shell:startup. Wajib kalau ada aplikasi yang kamu jalankan sebagai
+    Administrator (Windows Terminal, VS Code) dan ingin ikut di-tile.
+    Script harus dijalankan dari PowerShell yang elevated.
+
 .PARAMETER SkipAutostart
     Jangan aktifkan autostart komorebi dan YASB.
 
 .EXAMPLE
     .\install.ps1
     .\install.ps1 -SkipAutostart
+    .\install.ps1 -Elevated
 #>
 
 [CmdletBinding()]
 param(
     [switch]$SkipFetch,
-    [switch]$SkipAutostart
+    [switch]$SkipAutostart,
+    [switch]$Elevated
 )
 
 $ErrorActionPreference = 'Stop'
@@ -139,7 +148,7 @@ if ($SkipFetch) {
 } else {
     komorebic fetch-app-specific-configuration | Out-Null
     if (Test-Path $appsJson) {
-        $count = (Get-Content $appsJson -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties.Count - 1
+        $count = @((Get-Content $appsJson -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | Where-Object { $_.Name -ne '$schema' }).Count
         Write-Ok "applications.json terunduh ($count aplikasi)"
     } else {
         Write-Warn 'Unduhan gagal - jalankan manual: komorebic fetch-app-specific-configuration'
@@ -147,7 +156,17 @@ if ($SkipFetch) {
 }
 
 # --- 6. Autostart ----------------------------------------------------------
-if (-not $SkipAutostart) {
+if ($Elevated -and -not $SkipAutostart) {
+    Write-Step 'Mengaktifkan autostart (elevated, scheduled task)'
+
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole('Administrators')
+    if (-not $isAdmin) { throw '-Elevated butuh PowerShell yang dijalankan sebagai Administrator' }
+
+    & (Join-Path $RepoRoot 'scripts\install-elevated-autostart.ps1')
+
+    yasbc enable-autostart | Out-Null
+    Write-Ok 'YASB: terdaftar di HKCU\...\CurrentVersion\Run'
+} elseif (-not $SkipAutostart) {
     Write-Step 'Mengaktifkan autostart'
 
     # PENTING: --config wajib ada. Tanpa itu komorebi jalan tanpa membaca
