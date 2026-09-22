@@ -190,6 +190,7 @@ Kalau terminalmu muncul di daftar, berarti `applications.json` termuat dengan be
 | `yasb/config.yaml` → `komorebi_control.config_path` | `C:/Users/daffa/komorebi.json` | Path absolut, YASB tidak meng-expand variabel environment di sini |
 | `yasb/config.yaml` → `wallpapers.image_path` | `C:/Users/amn/Pictures` | Sisa bawaan theme aslinya, arahkan ke folder gambarmu sendiri |
 | `komorebi/komorebi.json` → `monitors` | 1 monitor, 7 workspace | Tambah satu blok `monitors` lagi kalau device-nya pakai lebih dari satu layar |
+| `komorebi/komorebi.json` → `layered_applications` | `claude.exe` | Daftar app Electron layered yang ingin di-tile; tambah/hapus sesuai app yang kamu pakai, lihat [catatan](#aplikasi-electron-dengan-ws_ex_layered-claude-desktop-diabaikan-komorebi) |
 
 `install.ps1` menangani dua yang pertama secara otomatis. Yang ketiga harus manual.
 
@@ -386,6 +387,17 @@ Solusi: autostart lewat scheduled task elevated, lihat [Autostart → Varian ele
 ### Window yang sudah ada sebelum komorebi start tidak otomatis di-manage
 
 komorebi mengelola window saat menerima event *ObjectShow*. Window yang sudah terbuka sebelum komorebi jalan (dan tidak ada di state dump sesi sebelumnya) dibiarkan floating sampai ada event itu. Cukup **minimize lalu restore** window-nya, atau tutup-buka ulang. Ini normal, bukan masalah config.
+
+### Aplikasi Electron dengan `WS_EX_LAYERED` (Claude Desktop) diabaikan komorebi
+
+Window yang punya extended style `WS_EX_LAYERED` (biasanya Electron dengan transparansi/acrylic) di-filter komorebi sebelum sempat di-manage — tidak ada satu pun baris event-nya di log, jadi terlihat seperti "tidak terdeteksi". `applications.json` upstream sudah punya kategori `layered` untuk Discord, Zed, Office, tapi tidak mencakup app yang lebih baru. Config ini menambahkan **Claude Desktop** (`claude.exe`) lewat `layered_applications` + `tray_and_multi_window_applications` di `komorebi.json`.
+
+Cara cek app lain: `GetWindowLong(hwnd, GWL_EXSTYLE) & 0x80000` — kalau tidak nol, tambahkan exe-nya ke `layered_applications` di `komorebi.json` (bukan di `applications.json`, karena file itu ditimpa setiap `fetch-app-specific-configuration`).
+
+Dua catatan saat menerapkannya:
+
+- `komorebic reload-configuration` **tidak** cukup untuk `layered_applications` — pakai `komorebic replace-configuration "$env:USERPROFILE\komorebi.json"`.
+- `replace-configuration` menginisialisasi ulang state, jadi semua window terkumpul lagi di workspace I. Setelah itu window layered yang sudah terbuka perlu minimize/restore supaya kena event Show.
 
 ### `KOMOREBI_CONFIG_HOME` tidak menggantikan `--config`
 

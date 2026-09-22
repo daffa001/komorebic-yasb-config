@@ -43,6 +43,20 @@
       "font_size": 16
     }
   },
+  "layered_applications": [
+    {
+      "kind": "Exe",
+      "id": "claude.exe",
+      "matching_strategy": "Equals"
+    }
+  ],
+  "tray_and_multi_window_applications": [
+    {
+      "kind": "Exe",
+      "id": "claude.exe",
+      "matching_strategy": "Equals"
+    }
+  ],
   "monitors": [
     {
       "workspaces": [
