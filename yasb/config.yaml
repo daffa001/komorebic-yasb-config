@@ -6,9 +6,9 @@ watch_config: true
 debug: true
 update_check: true
 komorebi:
-  start_command: "komorebic start --whkd"
-  stop_command: "komorebic stop --whkd"
-  reload_command: "komorebic stop --whkd && komorebic start --whkd"
+  start_command: "wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs start"
+  stop_command: "wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs stop"
+  reload_command: "wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs restart"
 bars:
   primary-bar:
     enabled: true
@@ -50,7 +50,7 @@ bars:
       - komorebi_stack
       - media
       - audio_visualizer
-      - komorebi_control
+      - komorebi_ctl
       - systray
       # - open_meteo
       # - wallpapers
@@ -365,30 +365,20 @@ widgets:
       show_only_stack: true
       enable_scroll_switching: true
       reverse_scroll_direction: false
-  komorebi_control:
-    type: "komorebi.control.KomorebiControlWidget"
+  komorebi_ctl:
+    type: "yasb.custom.CustomWidget"
     options:
-      label: "<span></span>"
-      icons:
-        start: ""
-        stop: ""
-        reload: ""
-      run_ahk: false
-      run_whkd: true
-      run_masir: false
-      config_path: "C:/Users/daffa/komorebi.json"
-      show_version: true
-      komorebi_menu:
-        blur: true
-        round_corners: true
-        round_corners_type: normal
-        border_color: System
-        alignment: right
-        direction: down
-        offset_top: 6
-        offset_left: 0
+      label: "<span></span>"
+      label_alt: "<span></span>"
+      class_name: "komorebi-ctl-widget"
+      tooltip: true
+      tooltip_label: "komorebi\nKlik kiri: restart\nKlik tengah: start\nKlik kanan: stop"
+      exec_options:
+        use_shell: false
       callbacks:
-        on_left: "toggle_menu"
+        on_left: "exec wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs restart"
+        on_middle: "exec wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs start"
+        on_right: "exec wscript //nologo C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs stop"
   clock:
     type: yasb.clock.ClockWidget
     options:

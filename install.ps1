@@ -108,6 +108,12 @@ foreach ($t in $targets) {
     Write-Ok "$($t.Src)  ->  $($t.Dst)"
 }
 
+# Script kendali komorebi yang dipakai widget komorebi_ctl dan menu tray YASB
+$ExtraDir = Join-Path $ConfigDir 'komorebi-extra'
+if (-not (Test-Path $ExtraDir)) { New-Item -ItemType Directory -Force -Path $ExtraDir | Out-Null }
+Copy-Item (Join-Path $RepoRoot 'scripts\komorebi-ctl.vbs') (Join-Path $ExtraDir 'komorebi-ctl.vbs') -Force
+Write-Ok "scripts\komorebi-ctl.vbs  ->  $ExtraDir\komorebi-ctl.vbs"
+
 # --- 4. Sesuaikan path yang mengandung username ----------------------------
 Write-Step 'Menyesuaikan path ke username device ini'
 
@@ -130,6 +136,13 @@ $content = [regex]::Replace(
     "image_path: `"$HomeFwd/Pictures`""
 )
 
+# Widget komorebi_ctl + menu tray: path absolut ke komorebi-ctl.vbs
+$content = [regex]::Replace(
+    $content,
+    '[A-Za-z]:/Users/[^/ ]+/\.config/komorebi-extra/komorebi-ctl\.vbs',
+    "$HomeFwd/.config/komorebi-extra/komorebi-ctl.vbs"
+)
+
 # Tulis tanpa BOM. `Set-Content -Encoding UTF8` di Windows PowerShell 5.1
 # menambahkan BOM, dan parser YAML YASB akan tersedak karenanya.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -137,6 +150,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 Write-Ok "config_path -> $HomeFwd/komorebi.json"
 Write-Ok "image_path  -> $HomeFwd/Pictures"
+Write-Ok "komorebi-ctl.vbs -> $HomeFwd/.config/komorebi-extra/komorebi-ctl.vbs"
 
 # --- 5. applications.json --------------------------------------------------
 Write-Step 'Menyiapkan applications.json (aturan per-aplikasi)'

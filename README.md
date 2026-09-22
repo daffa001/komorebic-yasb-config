@@ -34,7 +34,7 @@ Widget komorebi yang aktif di bar:
 | `komorebi_workspaces` | kiri | Titik workspace. Hanya workspace aktif + yang ada isinya yang tampil. Scroll di atasnya untuk pindah workspace. |
 | `komorebi_active_layout` | kiri | Ikon layout aktif. **Klik kiri** buka dropdown daftar layout, **klik tengah** toggle monocle, **klik kanan** next layout. |
 | `komorebi_stack` | kiri | Muncul hanya saat window sedang di-stack. Menampilkan ikon tiap window dalam stack, dibungkus border sebagai penanda. |
-| `komorebi_control` | kanan | Start / stop / reload komorebi langsung dari bar, plus info versi. |
+| `komorebi_ctl` | kanan | Kendali komorebi dari bar lewat `scripts/komorebi-ctl.vbs`: **klik kiri** restart, **klik tengah** start, **klik kanan** stop. Menggantikan widget bawaan `komorebi_control`, yang selalu men-start komorebi non-elevated (lihat [Autostart](#varian-elevated-wajib-kalau-ada-app-yang-jalan-as-administrator)). Menu tray YASB → *Komorebi* memakai script yang sama. |
 | `media` | kanan | Lagu yang sedang diputar (thumbnail + judul - artis, scroll kalau panjang), diambil dari Windows media session (Spotify, browser, VLC, ...). Hilang saat tidak ada yang diputar. **Klik kiri** popup kontrol (seek, prev/play/next, volume app), **klik tengah** play/pause, **klik kanan** judul saja. |
 | `audio_visualizer` | kanan | Bar visualizer dari output audio sistem, di sebelah widget media. Hilang otomatis saat idle. |
 
@@ -88,6 +88,7 @@ Kalau dua font ini belum terpasang, ikon di bar akan jadi kotak kosong (*tofu*).
 | `yasb/config.yaml` | `%USERPROFILE%\.config\yasb\config.yaml` |
 | `yasb/styles.css` | `%USERPROFILE%\.config\yasb\styles.css` |
 | `scripts/install-elevated-autostart.ps1` | — (dijalankan, tidak disalin) — mendaftarkan scheduled task autostart elevated, lihat [Autostart](#autostart) |
+| `scripts/komorebi-ctl.vbs` | `%USERPROFILE%\.config\komorebi-extra\komorebi-ctl.vbs` — start/stop/restart komorebi tanpa console; otomatis pakai scheduled task elevated kalau ada |
 
 Dua file yang **sengaja tidak ikut** di-commit (lihat `.gitignore`):
 
@@ -189,10 +190,11 @@ Kalau terminalmu muncul di daftar, berarti `applications.json` termuat dengan be
 |---|---|---|
 | `yasb/config.yaml` → `komorebi_control.config_path` | `C:/Users/daffa/komorebi.json` | Path absolut, YASB tidak meng-expand variabel environment di sini |
 | `yasb/config.yaml` → `wallpapers.image_path` | `C:/Users/amn/Pictures` | Sisa bawaan theme aslinya, arahkan ke folder gambarmu sendiri |
+| `yasb/config.yaml` → `komorebi_ctl.callbacks` dan `komorebi.*_command` | `C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs` | Path absolut ke script kendali; sama seperti `config_path`, YASB tidak meng-expand variabel environment di callback |
 | `komorebi/komorebi.json` → `monitors` | 1 monitor, 7 workspace | Tambah satu blok `monitors` lagi kalau device-nya pakai lebih dari satu layar |
 | `komorebi/komorebi.json` → `layered_applications` | `claude.exe`, `Hermes.exe` | Daftar app Electron layered yang ingin di-tile; tambah/hapus sesuai app yang kamu pakai, lihat [catatan](#aplikasi-electron-dengan-ws_ex_layered-claude-desktop-diabaikan-komorebi) |
 
-`install.ps1` menangani dua yang pertama secara otomatis. Yang ketiga harus manual.
+`install.ps1` menangani semua path username secara otomatis. Hanya `monitors` dan `layered_applications` yang harus manual.
 
 > `komorebi.json` memakai `$Env:USERPROFILE/applications.json`, jadi **itu** sudah portabel dan tidak perlu diubah.
 
@@ -208,7 +210,7 @@ Kalau terminalmu muncul di daftar, berarti `applications.json` termuat dengan be
 | Reload bar | `yasbc reload` |
 | Stop semua | `komorebic stop --whkd` lalu `yasbc stop` |
 
-Reload komorebi juga bisa lewat tombol di widget `komorebi_control` di bar (ikon roda gigi di kanan).
+Restart penuh (stop + start, dengan elevation yang benar) bisa lewat widget `komorebi_ctl` di bar (klik kiri ikon komorebi di kanan) atau menu tray YASB → *Komorebi*. Keduanya menjalankan `scripts/komorebi-ctl.vbs`.
 
 ---
 
@@ -259,8 +261,7 @@ komorebic stop --whkd
 schtasks /run /tn "komorebi Elevated Autostart"
 ```
 
-> Tombol **Start / Reload di widget `komorebi_control`** YASB selalu menghasilkan komorebi **non-elevated** (widget-nya berjalan sebagai user biasa), jadi pada setup elevated jangan pakai tombol itu untuk start ulang — pakai `schtasks /run` di atas. Tombol Stop tetap aman dipakai.
-> Kalau kamu **tetap** menekan Start/Reload di widget pada setup elevated, yang terjadi: komorebi elevated dihentikan, lalu diganti instance **non-elevated** — Terminal/VS Code langsung lepas dari tiling, sementara whkd yang lama (elevated) tetap jalan. Pulihkan dengan `komorebic stop` lalu `schtasks /run` di atas; window yang sempat lepas perlu minimize/restore lagi.
+> Widget bawaan YASB `komorebi_control` menjalankan `komorebic start` **sebagai user biasa** (non-elevated), jadi pada setup elevated tombol Start/Reload-nya justru merusak: komorebi elevated dihentikan lalu diganti instance non-elevated, Terminal/VS Code langsung lepas dari tiling. Karena itu config ini memakai widget custom `komorebi_ctl` + menu tray yang memanggil `scripts/komorebi-ctl.vbs` — script itu mendeteksi task elevated dan men-start lewat `schtasks /run`. Kalau komorebi sempat jalan non-elevated, cukup klik kiri widget `komorebi_ctl` (restart); window yang sempat lepas perlu minimize/restore.
 
 Membatalkan:
 
@@ -394,6 +395,8 @@ komorebi mengelola window saat menerima event *ObjectShow*. Window yang sudah te
 Window yang punya extended style `WS_EX_LAYERED` (biasanya Electron dengan transparansi/acrylic) di-filter komorebi sebelum sempat di-manage — tidak ada satu pun baris event-nya di log, jadi terlihat seperti "tidak terdeteksi". `applications.json` upstream sudah punya kategori `layered` untuk Discord, Zed, Office, tapi tidak mencakup app yang lebih baru. Config ini menambahkan **Claude Desktop** (`claude.exe`) dan **Hermes** (`Hermes.exe`) lewat `layered_applications` + `tray_and_multi_window_applications` di `komorebi.json`.
 
 Cara cek app lain: `GetWindowLong(hwnd, GWL_EXSTYLE) & 0x80000` — kalau tidak nol, tambahkan exe-nya ke `layered_applications` di `komorebi.json` (bukan di `applications.json`, karena file itu ditimpa setiap `fetch-app-specific-configuration`).
+
+Ini **akan terus terjadi untuk setiap app layered baru** sampai exe-nya didaftarkan — komorebi tidak punya opsi global "manage semua window layered", filternya by design (window layered biasanya overlay/transparansi yang memang tidak boleh di-tile). Pengecualian sementara tanpa mengubah config: fokuskan window-nya lalu `komorebic manage` (paksa manage untuk sesi ini saja).
 
 Dua catatan saat menerapkannya:
 
