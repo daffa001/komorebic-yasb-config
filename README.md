@@ -371,6 +371,27 @@ Harus ada `--config="..."` di situ. Kalau kosong, restart dengan flag yang benar
 
 Karena itu autostart lewat `komorebic enable-autostart --config ...` sangat disarankan — flag-nya tertanam permanen di shortcut, jadi tidak ada lagi kemungkinan lupa.
 
+**Ada tiga jalur berbeda yang bisa menjalankan komorebi**, dan ketiganya harus memuat `--config`:
+
+| Jalur | Di mana flag-nya diatur |
+|---|---|
+| Ketik manual di terminal | Perintahmu sendiri |
+| Autostart saat login | `komorebi.lnk` di `shell:startup`, dibuat oleh `komorebic enable-autostart --config ...` |
+| Menu tray YASB (klik kanan ikon YASB) | Blok `komorebi:` di `yasb/config.yaml` |
+
+Jalur ketiga paling mudah terlewat. Blok `komorebi:` dibaca `core/tray.pyc` dan dijalankan lewat `subprocess.run(shell=True)`, jadi `%USERPROFILE%` ter-expand dengan benar:
+
+```yaml
+komorebi:
+  start_command: 'komorebic start --whkd --config=%USERPROFILE%\komorebi.json'
+  stop_command: 'komorebic stop --whkd'
+  reload_command: 'komorebic reload-configuration'
+```
+
+Catatan: blok ini **hanya** memengaruhi menu tray. Tombol start/stop/reload di widget `komorebi_control` pada bar memakai jalurnya sendiri dan mengambil path dari `config_path` di widget itu — keduanya terpisah dan dua-duanya perlu benar.
+
+`reload_command` sengaja memakai `reload-configuration`, bukan stop-lalu-start: lebih cepat karena tidak me-restart proses, dan mustahil kehilangan flag config.
+
 ### Aplikasi yang jalan sebagai Administrator tidak ter-tile
 
 Gejalanya persis seperti kasus `--config` di atas — Windows Terminal / VS Code dibiarkan floating tanpa error apa pun — tapi penyebabnya beda: **window elevated hanya bisa dikelola oleh komorebi yang juga elevated**. Windows (UIPI) melarang proses non-elevated membaca informasi proses yang elevated, jadi komorebi tidak bisa tahu exe-nya dan menganggap window itu tidak eligible. `komorebic visible-windows` bahkan tidak menampilkannya.

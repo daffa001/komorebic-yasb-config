@@ -5,10 +5,14 @@ watch_stylesheet: true
 watch_config: true
 debug: true
 update_check: true
+# Dipakai oleh menu tray YASB (klik kanan ikon YASB > Komorebi).
+# --config WAJIB ada: tanpa itu komorebi jalan tanpa membaca komorebi.json,
+# applications.json tidak termuat, dan Windows Terminal tidak akan dikelola.
+# Dijalankan lewat cmd (shell=True), jadi %USERPROFILE% ter-expand.
 komorebi:
-  start_command: "komorebic start --whkd"
-  stop_command: "komorebic stop --whkd"
-  reload_command: "komorebic stop --whkd && komorebic start --whkd"
+  start_command: 'komorebic start --whkd --config=%USERPROFILE%\komorebi.json'
+  stop_command: 'komorebic stop --whkd'
+  reload_command: 'komorebic reload-configuration'
 bars:
   primary-bar:
     enabled: true
@@ -29,6 +33,10 @@ bars:
     window_flags:
       always_on_top: true
       windows_app_bar: true
+      # Sembunyikan bar saat ada window fullscreen (video, game).
+      # Tanpa ini, always_on_top membuat bar tetap menimpa video fullscreen.
+      hide_on_fullscreen: true
+      hide_on_maximized: false
       auto_hide: false
     dimensions:
       width: "100%"
@@ -54,7 +62,7 @@ bars:
       - systray
       # - open_meteo
       # - wallpapers
-      # - github
+      - github
       - notifications
       - volume
       - clock
@@ -561,7 +569,10 @@ widgets:
         margin:
         - 0
         - 5
-      only_unread: false
+      # true = hanya ambil notifikasi yang belum dibaca. Selain mengurangi
+      # request, ini menghentikan query ke repo yang sudah dihapus/di-rename
+      # (sumber warning "Could not resolve to a Repository" di yasb.log).
+      only_unread: true
       show_comment_count: true
       max_field_size: 54
       update_interval: 600
