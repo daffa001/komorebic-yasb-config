@@ -37,12 +37,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$RepoRoot  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$UserHome  = $env:USERPROFILE
-$ConfigDir = Join-Path $UserHome '.config'
-$YasbDir   = Join-Path $ConfigDir 'yasb'
-$Stamp     = Get-Date -Format 'yyyyMMdd-HHmmss'
-$BackupDir = Join-Path $RepoRoot "backup\$Stamp"
+$RepoRoot   = Split-Path -Parent $MyInvocation.MyCommand.Path
+$UserHome   = $env:USERPROFILE
+$ConfigDir  = Join-Path $UserHome '.config'
+$YasbDir    = Join-Path $ConfigDir 'yasb'
+$YasbScripts = Join-Path $YasbDir 'scripts'
+$Stamp      = Get-Date -Format 'yyyyMMdd-HHmmss'
+$BackupDir  = Join-Path $RepoRoot "backup\$Stamp"
 
 function Write-Step { param([string]$Text) Write-Host "`n==> $Text" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$Text) Write-Host "    OK  $Text" -ForegroundColor Green }
@@ -81,6 +82,8 @@ $targets = @(
     @{ Src = 'komorebi\whkdrc';        Dst = Join-Path $ConfigDir 'whkdrc'        }
     @{ Src = 'yasb\config.yaml';       Dst = Join-Path $YasbDir   'config.yaml'   }
     @{ Src = 'yasb\styles.css';        Dst = Join-Path $YasbDir   'styles.css'    }
+    # Dibaca oleh widget custom "afterburner" lewat exec_options.run_cmd.
+    @{ Src = 'yasb\scripts\afterburner-stats.ps1'; Dst = Join-Path $YasbScripts 'afterburner-stats.ps1' }
 )
 
 $backedUp = 0
@@ -97,7 +100,7 @@ else                 { Write-Ok 'Tidak ada config lama, tidak perlu backup' }
 # --- 3. Salin config -------------------------------------------------------
 Write-Step 'Menyalin config ke lokasinya'
 
-foreach ($dir in $ConfigDir, $YasbDir) {
+foreach ($dir in $ConfigDir, $YasbDir, $YasbScripts) {
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
 }
 
@@ -130,6 +133,26 @@ $content = [regex]::Replace(
     "image_path: `"$HomeFwd/Pictures`""
 )
 
+# Widget afterburner memanggil script pembaca shared memory lewat path absolut.
+# YASB memecah run_cmd dengan split(' '), jadi path TIDAK boleh berspasi dan
+# tidak boleh dikutip. Kalau username punya spasi, pakai short path 8.3.
+$abScriptWin = Join-Path $YasbScripts 'afterburner-stats.ps1'
+if ($abScriptWin -match ' ') {
+    $short = (New-Object -ComObject Scripting.FileSystemObject).GetFile($abScriptWin).ShortPath
+    if ($short -notmatch ' ') {
+        $abScriptWin = $short
+        Write-Warn "Path home berspasi - run_cmd memakai short path 8.3: $short"
+    } else {
+        Write-Warn "Path home berspasi dan short path 8.3 tidak tersedia. Widget afterburner tidak akan jalan; pindahkan script ke folder tanpa spasi lalu sesuaikan run_cmd."
+    }
+}
+$abScript = $abScriptWin -replace '\\', '/'
+$content = [regex]::Replace(
+    $content,
+    'run_cmd:\s*powershell[^\r\n]*',
+    "run_cmd: powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File $abScript"
+)
+
 # Tulis tanpa BOM. `Set-Content -Encoding UTF8` di Windows PowerShell 5.1
 # menambahkan BOM, dan parser YAML YASB akan tersedak karenanya.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -137,6 +160,16 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 Write-Ok "config_path -> $HomeFwd/komorebi.json"
 Write-Ok "image_path  -> $HomeFwd/Pictures"
+Write-Ok "run_cmd     -> $abScript"
+
+# Widget afterburner butuh MSI Afterburner terpasang + jalan. Bukan error fatal:
+# script pembacanya mencetak JSON kosong dan widget menyembunyikan diri sendiri.
+$abExe = 'C:\Program Files (x86)\MSI Afterburner\MSIAfterburner.exe'
+if (Test-Path $abExe) {
+    Write-Ok 'MSI Afterburner ditemukan (widget afterburner aktif)'
+} else {
+    Write-Warn 'MSI Afterburner tidak terpasang - widget afterburner akan tetap tersembunyi'
+}
 
 # --- 5. applications.json --------------------------------------------------
 Write-Step 'Menyiapkan applications.json (aturan per-aplikasi)'

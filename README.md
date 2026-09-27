@@ -34,6 +34,7 @@ Widget komorebi yang aktif di bar:
 | `komorebi_workspaces` | kiri | Titik workspace. Hanya workspace aktif + yang ada isinya yang tampil. Scroll di atasnya untuk pindah workspace. |
 | `komorebi_active_layout` | kiri | Ikon layout aktif. **Klik kiri** buka dropdown daftar layout, **klik tengah** toggle monocle, **klik kanan** next layout. |
 | `komorebi_stack` | kiri | Muncul hanya saat window sedang di-stack. Menampilkan ikon tiap window dalam stack, dibungkus border sebagai penanda. |
+| `afterburner` | kiri | Suhu + load CPU dan GPU, dibaca langsung dari sensor MSI Afterburner. **Klik kiri** tukar ke tampilan detail (suhu, clock, watt), **klik kanan** buka MSI Afterburner, **hover** tooltip lengkap (VRAM, fan, RAM). Hilang otomatis saat Afterburner tidak jalan. Lihat [catatan](#widget-afterburner-membaca-shared-memory-mahm). |
 | `komorebi_control` | kanan | Start / stop / reload komorebi langsung dari bar, plus info versi. |
 | `media` | kanan | Lagu yang sedang diputar (thumbnail + judul - artis, scroll kalau panjang), diambil dari Windows media session (Spotify, browser, VLC, ...). Hilang saat tidak ada yang diputar. **Klik kiri** popup kontrol (seek, prev/play/next, volume app), **klik tengah** play/pause, **klik kanan** judul saja. |
 | `audio_visualizer` | kanan | Bar visualizer dari output audio sistem, di sebelah widget media. Hilang otomatis saat idle. |
@@ -87,6 +88,7 @@ Kalau dua font ini belum terpasang, ikon di bar akan jadi kotak kosong (*tofu*).
 | `komorebi/whkdrc` | `%USERPROFILE%\.config\whkdrc` |
 | `yasb/config.yaml` | `%USERPROFILE%\.config\yasb\config.yaml` |
 | `yasb/styles.css` | `%USERPROFILE%\.config\yasb\styles.css` |
+| `yasb/scripts/afterburner-stats.ps1` | `%USERPROFILE%\.config\yasb\scripts\afterburner-stats.ps1` |
 | `scripts/install-elevated-autostart.ps1` | — (dijalankan, tidak disalin) — mendaftarkan scheduled task autostart elevated, lihat [Autostart](#autostart) |
 
 Dua file yang **sengaja tidak ikut** di-commit (lihat `.gitignore`):
@@ -129,7 +131,7 @@ Kalau lebih suka tahu persis apa yang terjadi, ikuti urutan ini.
 ### 1. Siapkan folder
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\yasb"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\yasb\scripts"
 ```
 
 ### 2. Salin config
@@ -139,6 +141,7 @@ Copy-Item komorebi\komorebi.json "$env:USERPROFILE\komorebi.json"
 Copy-Item komorebi\whkdrc        "$env:USERPROFILE\.config\whkdrc"
 Copy-Item yasb\config.yaml       "$env:USERPROFILE\.config\yasb\config.yaml"
 Copy-Item yasb\styles.css        "$env:USERPROFILE\.config\yasb\styles.css"
+Copy-Item yasb\scripts\afterburner-stats.ps1 "$env:USERPROFILE\.config\yasb\scripts\afterburner-stats.ps1"
 ```
 
 ### 3. Unduh aturan per-aplikasi
@@ -151,11 +154,14 @@ Langkah ini **tidak boleh dilewat**. Tanpa `applications.json`, aplikasi multi-w
 
 ### 4. Sesuaikan path username
 
-Buka `%USERPROFILE%\.config\yasb\config.yaml`, ganti dua baris ini kalau username Windows-mu bukan `daffa`:
+Buka `%USERPROFILE%\.config\yasb\config.yaml`, ganti tiga baris ini kalau username Windows-mu bukan `daffa`:
 
 ```yaml
 config_path: "C:/Users/daffa/komorebi.json"   # widget komorebi_control
 image_path: "C:/Users/amn/Pictures"           # widget wallpapers
+
+# widget afterburner - perhatikan: tanpa tanda kutip, dan path tidak boleh berspasi
+run_cmd: powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:/Users/daffa/.config/yasb/scripts/afterburner-stats.ps1
 ```
 
 ### 5. Cek config terbaca
@@ -191,8 +197,9 @@ Kalau terminalmu muncul di daftar, berarti `applications.json` termuat dengan be
 | `yasb/config.yaml` → `wallpapers.image_path` | `C:/Users/amn/Pictures` | Sisa bawaan theme aslinya, arahkan ke folder gambarmu sendiri |
 | `komorebi/komorebi.json` → `monitors` | 1 monitor, 7 workspace | Tambah satu blok `monitors` lagi kalau device-nya pakai lebih dari satu layar |
 | `komorebi/komorebi.json` → `layered_applications` | `claude.exe` | Daftar app Electron layered yang ingin di-tile; tambah/hapus sesuai app yang kamu pakai, lihat [catatan](#aplikasi-electron-dengan-ws_ex_layered-claude-desktop-diabaikan-komorebi) |
+| `yasb/config.yaml` → `afterburner.exec_options.run_cmd` | `C:/Users/daffa/.config/yasb/scripts/afterburner-stats.ps1` | Path absolut ke script pembaca sensor, alasan yang sama dengan `config_path` |
 
-`install.ps1` menangani dua yang pertama secara otomatis. Yang ketiga harus manual.
+`install.ps1` menangani yang pertama, kedua, dan keempat secara otomatis. Yang ketiga harus manual.
 
 > `komorebi.json` memakai `$Env:USERPROFILE/applications.json`, jadi **itu** sudah portabel dan tidak perlu diubah.
 
@@ -471,6 +478,36 @@ Widget taskbar YASB tidak punya kesadaran soal stack komorebi — filternya hany
 
 Ini keterbatasan YASB, bukan salah config. Pilihannya: terima saja (widget stack sudah ditaruh di grup kiri supaya tidak bersebelahan dengan taskbar), atau hapus `komorebi_stack` dari daftar widget dan pakai stackbar bawaan komorebi dengan mengubah `stackbar.mode` di `komorebi.json` dari `"Never"` jadi `"OnStack"`.
 
+### Widget `afterburner` membaca shared memory MAHM
+
+YASB tidak punya widget MSI Afterburner. Yang dipakai di sini adalah `yasb.custom.CustomWidget`: YASB menjalankan sebuah perintah tiap `run_interval`, mem-parse stdout-nya sebagai JSON, lalu memasukkannya ke label lewat `{data[key]}`.
+
+Sumber datanya `yasb/scripts/afterburner-stats.ps1`. Afterburner mengekspos **seluruh** sensor monitoring-nya lewat shared memory bernama `MAHMSharedMemory` — formatnya didokumentasikan di `C:\Program Files (x86)\MSI Afterburner\SDK\Include\MAHMSharedMemory.h`. Script membukanya read-only dengan `MemoryMappedFile.OpenExisting` lalu membaca header v2.0 + array entry-nya. Tidak perlu elevasi: Afterburner sengaja mengizinkan proses lain membaca, jadi YASB yang non-elevated tetap bisa baca meski Afterburner-nya jalan elevated.
+
+Lihat semua sensor yang tersedia di device-mu:
+
+```powershell
+# daftar sensor mentah dari Afterburner (source id, index, nama, nilai, unit)
+& "$env:USERPROFILE\.config\yasb\scripts\afterburner-stats.ps1" -Raw
+
+# JSON persis seperti yang dibaca YASB
+& "$env:USERPROFILE\.config\yasb\scripts\afterburner-stats.ps1"
+```
+
+Empat hal yang bikin ini gampang salah:
+
+**1. `run_cmd` tidak boleh dikutip dan tidak boleh berspasi.** YASB memecahnya dengan `run_cmd.split(' ')` jadi list argumen lalu memanggil `subprocess.Popen` tanpa shell. Tanda kutip yang kamu tulis ikut masuk ke argumen dan PowerShell menolak dengan `Illegal characters in path`. `install.ps1` otomatis memakai short path 8.3 kalau username-nya mengandung spasi.
+
+**2. Signature header bukan `0x4D48414D`.** MSVC mengevaluasi literal multi-karakter `'MAHM'` dengan karakter pertama sebagai byte paling signifikan, jadi nilainya `0x4D41484D` — di memori byte-nya justru berurutan `MHAM`.
+
+**3. `dwGpu` bukan selalu index GPU.** Untuk sensor per-core, Afterburner memakainya sebagai **index core**: `CPU1 temperature` punya `dwGpu = 0`, `CPU8 temperature` punya `dwGpu = 7`, dan baris agregat `CPU temperature` punya `dwGpu = 0xFFFFFFFF`. Kalau baris global tidak diprioritaskan, yang tampil di bar cuma core pertama. Tapi tidak semua sensor punya baris global — `RAM usage` hanya dilaporkan dengan `dwGpu = 0` — jadi script mencari baris global dulu, baru menerima index apa pun sebagai fallback.
+
+**4. Sensor yang tidak dicentang tidak ada sama sekali.** Isi shared memory mengikuti centang di **Afterburner → Settings → Monitoring**. Sensor yang tidak aktif tidak masuk daftar dan keluar sebagai `--`. Beberapa sensor juga memang tidak dilaporkan kartu tertentu: RX 580 misalnya mengembalikan `dwMemAmount = 0` (total VRAM) dan tidak punya hotspot maupun Vcore.
+
+Key JSON yang tersedia: `cpu_temp`, `cpu_usage`, `cpu_clock`, `cpu_clock_ghz`, `cpu_power`, `gpu_temp`, `gpu_hotspot`, `gpu_mem_temp`, `gpu_usage`, `gpu_core_clock`, `gpu_mem_clock`, `gpu_fan`, `gpu_fan_rpm`, `gpu_power`, `gpu_power_pct`, `gpu_voltage`, `gpu_vram_used`, `gpu_vram_gb`, `gpu_vram_total`, `gpu_vram_pct`, `ram_used_gb`, `fps`, `gpu_name`, `polled`, `status`.
+
+Kalau Afterburner tidak jalan, script mencetak `{}` dan widget menyembunyikan diri (`hide_empty: true`). Set `hide_empty: false` kalau lebih suka widget-nya tetap kelihatan dengan `--`.
+
 ---
 
 ## Troubleshooting
@@ -504,6 +541,27 @@ Get-Content "$env:USERPROFILE\.config\yasb\yasb.log" -Tail 40 | Select-String "E
 ```
 
 `Failed to validate widget(s) due to invalid options - <nama>` berarti ada opsi yang tidak dikenal di widget itu. YASB memakai validasi ketat (`extra: forbid`), jadi satu key salah nama membuat seluruh widget gagal dimuat.
+
+### Widget CPU/GPU (`afterburner`) tidak muncul
+
+Widget ini memang menyembunyikan diri kalau datanya kosong, jadi cek dari sumbernya dulu — jalankan script-nya langsung:
+
+```powershell
+& "$env:USERPROFILE\.config\yasb\scripts\afterburner-stats.ps1"
+```
+
+| Yang keluar | Artinya |
+|---|---|
+| JSON berisi `"status":"ok"` | Script sehat. Masalahnya di `run_cmd` — cek path-nya benar dan **tanpa tanda kutip** (lihat [catatan](#widget-afterburner-membaca-shared-memory-mahm)) |
+| `{}` + `MSI Afterburner tidak jalan` | Buka MSI Afterburner. Kalau ingin selalu jalan, daftarkan scheduled task autostart-nya |
+| `{}` + `Shared memory belum siap` | Afterburner baru start dan belum polling sekali pun; tunggu sebentar |
+| Nilainya `--` semua | Sensornya belum dicentang di Afterburner → Settings → Monitoring |
+
+Kalau script sehat tapi bar tetap kosong, jalankan perintah yang sama persis seperti YASB memanggilnya (tanpa shell, argumen dipecah per spasi) untuk melihat error PowerShell yang biasanya tertelan:
+
+```powershell
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.config\yasb\scripts\afterburner-stats.ps1"
+```
 
 ### Workspace di bar tidak update
 

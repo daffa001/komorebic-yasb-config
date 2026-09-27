@@ -51,7 +51,8 @@ bars:
       - quick_launch
       - komorebi_workspaces
       - komorebi_active_layout
-      
+      - afterburner
+
       center:
       - taskbar
       right:
@@ -397,6 +398,54 @@ widgets:
         offset_left: 0
       callbacks:
         on_left: "toggle_menu"
+  # Sensor CPU + GPU dari MSI Afterburner.
+  #
+  # Afterburner mengekspos semua sensor monitoring-nya lewat shared memory
+  # "MAHMSharedMemory". scripts/afterburner-stats.ps1 membacanya dan mencetak
+  # JSON; key yang dipakai di label/tooltip di bawah adalah key JSON itu.
+  # Jalankan script itu langsung untuk melihat semua key yang tersedia, atau
+  # dengan -Raw untuk melihat daftar sensor mentah dari Afterburner.
+  #
+  # Syarat: MSI Afterburner harus JALAN dan sensor yang mau dipakai harus
+  # dicentang di Settings > Monitoring. Sensor yang tidak dicentang tidak masuk
+  # shared memory dan keluar sebagai "--".
+  #
+  # hide_empty: true -> widget menghilang total kalau Afterburner tidak jalan
+  # (script mencetak "{}"). Set false kalau lebih suka tetap lihat "--".
+  afterburner:
+    type: "yasb.custom.CustomWidget"
+    options:
+      class_name: "afterburner-widget"
+      label: "<span class='icon cpu'>\uF4BC</span>{data[cpu_usage]}% {data[cpu_temp]}°<span class='icon gpu'>\U000F08AE</span>{data[gpu_usage]}% {data[gpu_temp]}°"
+      label_alt: "<span class='icon cpu'>\uF4BC</span>{data[cpu_temp]}° {data[cpu_clock_ghz]}GHz {data[cpu_power]}W<span class='icon gpu'>\U000F08AE</span>{data[gpu_temp]}° {data[gpu_core_clock]}MHz {data[gpu_power]}W"
+      label_placeholder: "--"
+      tooltip: true
+      # Key lain yang juga disediakan script tapi tidak dipakai di sini karena
+      # RX 580 tidak melaporkannya: gpu_hotspot, gpu_mem_temp, gpu_voltage,
+      # gpu_power_pct, gpu_vram_total, gpu_vram_gb, gpu_vram_pct, cpu_clock, fps.
+      # Kartu Nvidia / RDNA umumnya mengisi sebagian besarnya - tambahkan saja.
+      tooltip_label: "CPU   {data[cpu_temp]}°C · {data[cpu_usage]}% · {data[cpu_clock_ghz]} GHz · {data[cpu_power]} W\nGPU   {data[gpu_temp]}°C · {data[gpu_usage]}% · {data[gpu_core_clock]} MHz · {data[gpu_power]} W\nVRAM  {data[gpu_vram_used]} MB · mem clock {data[gpu_mem_clock]} MHz\nFan   {data[gpu_fan]}% · {data[gpu_fan_rpm]} RPM\nRAM   {data[ram_used_gb]} GB · {data[gpu_name]} · update {data[polled]}"
+      exec_options:
+        # Path di-patch ke username device ini oleh install.ps1.
+        #
+        # JANGAN kasih tanda kutip di sekitar path. YASB memecah run_cmd dengan
+        # run_cmd.split(' ') jadi list argumen (core/widgets/yasb/custom.py),
+        # bukan lewat shell, jadi kutipnya ikut masuk ke argumen dan PowerShell
+        # menolak dengan "Illegal characters in path".
+        # Konsekuensinya: path ini tidak boleh mengandung spasi - install.ps1
+        # otomatis memakai short path 8.3 kalau username-nya berspasi.
+        run_cmd: powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File C:/Users/daffa/.config/yasb/scripts/afterburner-stats.ps1
+        # Afterburner sendiri polling tiap 1000 ms; 2000 ms sudah cukup halus
+        # dan menahan biaya spawn powershell (~200 ms) tetap kecil.
+        run_interval: 2000
+        return_format: "json"
+        hide_empty: true
+        # false = langsung CreateProcess, tanpa cmd.exe perantara.
+        use_shell: false
+      callbacks:
+        on_left: "toggle_label"
+        on_middle: "do_nothing"
+        on_right: 'exec "C:\Program Files (x86)\MSI Afterburner\MSIAfterburner.exe"'
   clock:
     type: yasb.clock.ClockWidget
     options:

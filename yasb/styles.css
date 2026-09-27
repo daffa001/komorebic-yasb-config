@@ -1542,3 +1542,32 @@
     color: var(--yasb-fg-muted);
     padding: 4px 2px 0 2px;
 }
+/* MSI Afterburner (custom widget: CPU + GPU) */
+.afterburner-widget:hover {
+    background-color: var(--yasb-white-alpha-20);
+}
+.afterburner-widget .icon {
+    /* Glyph CPU (nf-oct-cpu) dan GPU (nf-md-expansion_card) hanya ada di Nerd
+       Font, tidak di Segoe Fluent Icons - jadi pakai font fallback. */
+    font-family: var(--icons-font-fallback);
+    font-size: 14px;
+}
+.afterburner-widget .icon.cpu {
+    color: #7fd6ff;
+    padding-right: 4px;
+}
+.afterburner-widget .icon.gpu {
+    color: #e6a3ff;
+    padding-left: 10px;
+    padding-right: 4px;
+}
+.afterburner-widget .label {
+    font-family: var(--system-font);
+    font-weight: 600;
+    /* min-width menahan lebar widget saat angka berganti 9% -> 10% -> 100%,
+       supaya widget lain di bar tidak ikut bergeser tiap 2 detik. */
+    min-width: 54px;
+}
+.afterburner-widget .label.alt {
+    min-width: 108px;
+}
