@@ -197,11 +197,12 @@ Kalau terminalmu muncul di daftar, berarti `applications.json` termuat dengan be
 | `yasb/config.yaml` → `komorebi_control.config_path` | `C:/Users/daffa/komorebi.json` | Path absolut, YASB tidak meng-expand variabel environment di sini |
 | `yasb/config.yaml` → `wallpapers.image_path` | `C:/Users/amn/Pictures` | Sisa bawaan theme aslinya, arahkan ke folder gambarmu sendiri |
 | `yasb/config.yaml` → `komorebi_ctl.callbacks` dan `komorebi.*_command` | `C:/Users/daffa/.config/komorebi-extra/komorebi-ctl.vbs` | Path absolut ke script kendali; sama seperti `config_path`, YASB tidak meng-expand variabel environment di callback |
-| `komorebi/komorebi.json` → `monitors` | 1 monitor, 7 workspace | Tambah satu blok `monitors` lagi kalau device-nya pakai lebih dari satu layar |
+| `komorebi/komorebi.json` → `monitors` + `display_index_preferences` | 2 monitor: AOC 2560×1440 (7 workspace) + LG 1366×768 (3 workspace) | ID monitor diambil dari `komorebic monitor-information` (`serial_number_id` atau `device_id`). Pakai serial yang terlihat seperti serial asli; monitor LG di sini sempat terbaca sebagai `FME7210` 1024×768 dengan serial `"1"` sebelum EDID-nya terbaca benar. Device satu monitor: hapus blok kedua dan entri `"1"` |
+| `yasb/config.yaml` → `secondary-bar.screens` | `["LG HD"]` | Nama screen monitor kedua dari `yasbc monitor-information`; set `enabled: false` kalau cuma satu monitor |
 | `komorebi/komorebi.json` → `layered_applications` | `claude.exe`, `Hermes.exe` | Daftar app Electron layered yang ingin di-tile; tambah/hapus sesuai app yang kamu pakai, lihat [catatan](#aplikasi-electron-dengan-ws_ex_layered-claude-desktop-diabaikan-komorebi) |
 | `yasb/config.yaml` → `afterburner.exec_options.run_cmd` | `C:/Users/daffa/.config/yasb/scripts/afterburner-stats.ps1` | Path absolut ke script pembaca sensor, alasan yang sama dengan `config_path` |
 
-`install.ps1` menangani semua path username secara otomatis. Hanya `monitors` dan `layered_applications` yang harus manual.
+`install.ps1` menangani semua path username secara otomatis. Hanya `monitors`, `display_index_preferences`, `secondary-bar.screens`, dan `layered_applications` yang harus manual.
 
 > `komorebi.json` memakai `$Env:USERPROFILE/applications.json`, jadi **itu** sudah portabel dan tidak perlu diubah.
 
@@ -310,6 +311,10 @@ Semua diatur di `komorebi/whkdrc`. Prefix-nya `alt`.
 | `alt + x` | Flip layout horizontal |
 | `alt + y` | Flip layout vertikal |
 | `alt + t` | Toggle floating |
+| `alt + shift + t` | Paksa manage window fokus yang tidak terdeteksi komorebi (sesi ini saja) |
+| `alt + ctrl + t` | Unmanage window yang tadi dipaksa manage |
+| `alt + ,` / `alt + .` | Fokus ke monitor sebelumnya / berikutnya |
+| `alt + shift + ,` / `alt + shift + .` | Pindahkan window ke monitor sebelumnya / berikutnya |
 | `alt + shift + f` | Toggle monocle (fullscreen dalam tiling) |
 | `alt + shift + r` | Retile paksa |
 | `alt + p` | Pause komorebi |
@@ -413,6 +418,10 @@ Cara memastikan — kalau title window-nya diawali `Administrator:` atau diakhir
 ```
 
 Solusi: autostart lewat scheduled task elevated, lihat [Autostart → Varian elevated](#varian-elevated-wajib-kalau-ada-app-yang-jalan-as-administrator). Setelah komorebi elevated, window elevated baru langsung ter-tile.
+
+### Workspace monitor baru tidak muncul setelah menambah blok `monitors`
+
+Saat start, komorebi memulihkan `%TEMP%\komorebi.state.json` dari sesi sebelumnya (`applying state from ...` di log), dan state lama itu menimpa workspace dari config. Monitor yang dulu belum punya blok config tetap jalan dengan 1 workspace tanpa nama, meski `reload-configuration` atau restart. Solusi: stop komorebi, hapus/rename `%TEMP%\komorebi.state.json`, lalu start lagi.
 
 ### Window yang sudah ada sebelum komorebi start tidak otomatis di-manage
 

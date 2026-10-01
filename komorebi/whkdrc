@@ -47,6 +47,8 @@ alt + shift + oem_minus : komorebic resize-axis vertical decrease
 
 # Manipulate windows
 alt + t                 : komorebic toggle-float
+alt + shift + t         : komorebic manage # paksa manage window fokus (sesi ini saja)
+alt + ctrl + t          : komorebic unmanage
 alt + shift + f         : komorebic toggle-monocle
 
 # Window manager options
@@ -56,6 +58,12 @@ alt + p                 : komorebic toggle-pause
 # Layouts
 alt + x                 : komorebic flip-layout horizontal
 alt + y                 : komorebic flip-layout vertical
+
+# Monitors
+alt + oem_comma         : komorebic cycle-monitor previous # oem_comma is ,
+alt + oem_period        : komorebic cycle-monitor next # oem_period is .
+alt + shift + oem_comma : komorebic cycle-move-to-monitor previous
+alt + shift + oem_period : komorebic cycle-move-to-monitor next
 
 # Workspaces
 alt + 1                 : komorebic focus-workspace 0

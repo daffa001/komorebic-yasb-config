@@ -69,6 +69,10 @@
 
     }
   ],
+  "display_index_preferences": {
+    "0": "2S6RAHA012339",
+    "1": "803INVM32455"
+  },
   "monitors": [
     {
       "workspaces": [
@@ -99,6 +103,22 @@
         {
           "name": "VII",
           "layout": "RightMainVerticalStack"
+        }
+      ]
+    },
+    {
+      "workspaces": [
+        {
+          "name": "1",
+          "layout": "VerticalStack"
+        },
+        {
+          "name": "2",
+          "layout": "HorizontalStack"
+        },
+        {
+          "name": "3",
+          "layout": "Grid"
         }
       ]
     }

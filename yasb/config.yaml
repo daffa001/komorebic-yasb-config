@@ -67,6 +67,48 @@ bars:
       - volume
       - clock
       - control_center
+  # Bar ringkas untuk monitor kedua (1366x768). Nama screen dari
+  # `yasbc monitor-information`; ganti kalau monitornya beda.
+  # Widget komorebi otomatis menampilkan workspace milik monitor tempat bar ini.
+  secondary-bar:
+    enabled: true
+    screens: ["LG HD"]
+    class_name: yasb-bar
+    style: "adaptive"
+    alignment:
+      position: top
+      align: center
+    animation:
+      enabled: true
+      duration: 200
+    blur_effect:
+      enabled: false
+      dark_mode: false
+      round_corners: false
+      border_color: None
+    window_flags:
+      always_on_top: true
+      windows_app_bar: true
+      hide_on_fullscreen: true
+      hide_on_maximized: false
+      auto_hide: false
+    dimensions:
+      width: "100%"
+      height: 36
+    padding:
+      top: 0
+      left: 0
+      bottom: 0
+      right: 0
+    widgets:
+      left:
+      - komorebi_workspaces
+      - komorebi_active_layout
+      center:
+      - taskbar
+      right:
+      - komorebi_stack
+      - clock
 widgets:
   wallpapers:
     type: "yasb.wallpapers.WallpapersWidget"
